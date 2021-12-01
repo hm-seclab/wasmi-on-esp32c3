@@ -3,7 +3,7 @@ target = "riscv32imc-esp-espidf"
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
-runner = " espflash /dev/tty.usbserial-2120"
+runner = " espflash /dev/tty.usbserial-320"
 # Future - necessary for the experimental "native build" of esp-idf-sys with ESP32C3
 # See also https://github.com/ivmarkov/embuild/issues/16
 rustflags = ["-C", "default-linker-libraries"]
@@ -21,9 +21,3 @@ ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
 # The easiest way to generate a full "sdkconfig[.release|debug]" configuration (as opposed to manually enabling only the necessary flags via "sdkconfig.defaults[.*]"
 # is by running "cargo pio espidf menuconfig"
 ESP_IDF_SYS_GLOB_0 = { value = "/sdkconfig.*" }
-
-# Same thing but for the native build. Currently the native and PIO builds disagree how sdkconfig configuration should be passed to the ESP-IDF build
-# See https://github.com/esp-rs/esp-idf-sys/issues/10#issuecomment-919022205
-#ESP_IDF_SDKCONFIG = { value = "./sdkconfig.release", relative = true }
-#ESP_IDF_SDKCONFIG = { value = "./sdkconfig.debug", relative = true }
-# ESP_IDF_SDKCONFIG_DEFAULTS = { value = "./sdkconfig.defaults", relative = true }

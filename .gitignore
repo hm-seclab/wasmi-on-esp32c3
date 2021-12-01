@@ -2,5 +2,6 @@
 /.espressif
 /.embuild
 /target
+/application-c/build
 /Cargo.lock
 **/*.rs.bk
