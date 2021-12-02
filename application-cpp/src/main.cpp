@@ -39,8 +39,9 @@ int start() {
             print("pin 10 is lo", 13);
             uart.write((char)val_10);
         }
-        // turn led off
+        // turn led off and delay again
         CHECK_ERROR(gpio_8.set_low());
+        delay_ms(1000);
     }
 }
 }

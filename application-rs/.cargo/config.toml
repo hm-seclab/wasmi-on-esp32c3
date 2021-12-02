@@ -1,0 +1,6 @@
+[build]
+target = "wasm32-unknown-unknown"
+
+# rust compiles with a huge stack in WASM, see https://github.com/rust-lang/rust/blob/a16f686e4a0ea15dcd3b5aa3db7b1cba27bb9453/compiler/rustc_target/src/spec/wasm_base.rs#L13-L17
+# this option brings the stack down to one page by directly setting wasm-lld args
+rustflags = ["-C", "link-args=-z stack-size=32768"]
