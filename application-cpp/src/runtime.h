@@ -1,16 +1,4 @@
-#ifndef _IMPORTS_H_
-#define _IMPORTS_H_
-
-#define NULL 0
-
-typedef int bool;
-#define true 1
-#define false 0
-
-/**
- * Define a set of standardized imports describing the API to the WASM
- * runtime.
- */
+#pragma once
 #define WASM_IMPORT(function, signature) \
     __attribute__((import_module("env"), import_name(function))) signature
 
@@ -34,5 +22,3 @@ WASM_IMPORT("uart_write",
             int uart_write(unsigned int handle, unsigned char word));
 WASM_IMPORT("uart_read",
             int uart_read(unsigned int handle, unsigned char* word));
-
-#endif

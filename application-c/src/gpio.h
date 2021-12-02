@@ -1,7 +1,7 @@
 #ifndef _GPIO_H_
 #define _GPIO_H_
 
-#include "imports.h"
+#include "runtime.h"
 
 /**
  * Structure for an input pin.
