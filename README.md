@@ -1,74 +1,49 @@
 # Wasm on ESP32-C3
 
 This is a demonstration of running a WebAssembly interpreter (in this case [wasmi](https://github.com/paritytech/wasmi)) on the ESP32-C3 RISC-V Microcontroller.
-This is a very basic demonstration, where the runtime only provides three functions to call from WebAssembly: `write`, `read` and `println`, where `write` and `read` perform the
-corresponding UART operation over the pins 1 (TX) and 3 (RX) (without CTS and RTS).
+This is a very basic demonstration, where the runtime only provides a few functions to call from WebAssembly. A usage of the API is shown in the languages C, C++ and Rust.
+The runtime's functionality includes reading and writing to GPIOs and communication over a UART connection.
 
-This demo is build upon espressifs effort of porting the Rust standard library to their boards, running on the [esp-idf](https://github.com/espressif/esp-idf) development framework.
+This demo is build upon Espressifs effort of porting the Rust standard library to their boards, running on the [esp-idf](https://github.com/espressif/esp-idf) development framework.
 In order to run the demonstration you would need to use the latest Rust nightly compiler. Further Instructions can be found under [setup](#Setup).
 
 ## How this demo works
 
-The compiled WASM application code will be flashed onto the board as part of a static variable in the Rust code. The bytes are the output of compiling the following Rust program to WebAssembly:
+The compiled WASM application code will be flashed onto the board as part of a static variable in the Rust code (found in [`src/bytes.rs`](src/bytes.rs)). At runtime these bytes will be loaded and
+executed. To show an example usage, this demo involves three subprojects in [C](application-c), [C++](application-cpp) and [Rust](application-rs), which all include a small abstraction
+of the runtimes API and a program that basically implements the following example control flow:
 
-```rust
-// we don't need the standard library here
-#![no_std]
+```
+PROGRAM example_usage:
+    pin_8 = Pin 8 (LED) as output
+    pin_10 = Pin 10 as input
 
-// define the extern functions provided by the runtime, this will result
-// in WebAssembly `imports`.
-extern "C" {
-    // `write` takes a buffer and it's length and then writes the contents
-    // of the buffer on the UART interface.
-    pub fn write(offset: *const u8, len: u32) -> u32;
-    // `read` reads a single byte from the UART interface. 
-    pub fn read(offset: *const u8) -> u32;
-    // prints to stdout.
-    pub fn println(offset: *const u8, len: u32);
-}
+    uart = uart over pins 2 (rx) and 3 (tx)
 
-// for convenience: a macro for printing strings (no formatting available).
-macro_rules! println {
-    ($arg:tt) => {
-        unsafe { println($arg.as_ptr(), $arg.len() as u32) }
-    };
-}
+    LOOP:
+        pin_8.set_high()
 
-// The main method that is exported by the WASM module.
-#[no_mangle]
-pub fn start() {
-    let buffer = [0_u8; 255];
+        value_10 = pin_10.is_high()
+        if value_10 then
+            msg = "value 10 is hi"
+        else
+            msg = "value 10 is lo"
+        end if
 
-    let message = "Hello World!";
-    // write over UART and check the result 
-    let return_val = unsafe { write(message.as_ptr(), message.len() as u32) };
-    if return_val != 0 {
-        println!("Uff, panic during write!!");
-        return;
-    }
-    println!("Written succesfully");
+        print(msg)
+        uart.write(msg)
 
-    // read over uart and check the result
-    let return_val = unsafe { read(buffer.as_ptr()) };
-    if return_val != 0 {
-        println!("Uff, panic during read!!");
-        return;
-    }
-    println!("Read succesfully");
-}
+        sleep(1 second)
 
-// our custom panic handler as #![no_std] disallows us to use the standard one.
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+        pin_8.set_low()
+        sleep(1 second)
+    end LOOP
+end PROGRAM
 ```
 
-This code gets compiled to the rust target `wasm32-unknown-unknown`. The `wasmi` runtime then loads the module.
-In order for the above code to work, the runtime needs to resolve the imported functions `read`, `write` and `println`, which
-are defined in the file `src/main.rs` and use the underlying Esp-HAL for instantiating a UART connection.
-
-After the module is loaded, the runtime executes the `start` function, that's exported by the WASM program above.
+Each executable contains a `start` functions that implements the above behaviour. When loaded, the runtime needs to resolve each API call. This
+is done via the `Runtime` struct defined in [`src/runtime.rs`](src/runtime.rs). The runtime object also holds information about the current 
+state of the program, like opened UART connections and initialized Gpios.
 
 ## Setup
 
@@ -107,3 +82,5 @@ Then monitor the app via:
 ```
 espmonitor /dev/ttyUSB0
 ```
+
+To build each application, follow the specific instructions.
