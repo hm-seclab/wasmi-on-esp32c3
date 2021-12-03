@@ -23,12 +23,12 @@ use esp_idf_hal::serial::Pins;
 use esp_idf_hal::serial::Serial;
 use esp_idf_hal::serial::UART1;
 use esp_idf_sys::EspError;
+use log::info;
 use std::collections::HashMap;
 use wasmi::MemoryRef;
 use wasmi::{
     Externals, FuncInstance, ModuleImportResolver, RuntimeValue, Signature, TrapKind, ValueType,
 };
-use log::info;
 
 use esp_idf_hal::prelude::*;
 
@@ -124,7 +124,7 @@ impl<'a> Runtime<'a> {
             (2, 3) => {
                 let config = Config::default().baudrate(Hertz(115_200));
                 // establish a serial connection  over the given pins
-                let serial = Serial::<UART1, Gpio2<_>, Gpio3<_>>::new(
+                let serial = match Serial::<UART1, Gpio2<_>, Gpio3<_>>::new(
                     periphals.uart1,
                     Pins {
                         tx: pins.gpio2,
@@ -133,8 +133,10 @@ impl<'a> Runtime<'a> {
                         rts: None,
                     },
                     config,
-                )
-                .unwrap();
+                ) {
+                    Ok(ser) => ser,
+                    Err(err) => return err.code(),
+                };
 
                 // save the handle so that the WASM code can acess it
                 let res = self
@@ -147,6 +149,7 @@ impl<'a> Runtime<'a> {
                     .insert(self.handle_count, Box::new(serial));
 
                 self.handle_count += 1;
+
                 res
             }
             _ => 1,
