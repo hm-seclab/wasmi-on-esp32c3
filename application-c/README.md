@@ -1,6 +1,6 @@
 # C Example
 This example application provides a small abstraction over the runtimes API (files [gpio.h](src/gpio.h) and [uart.h](src/uart.h)).
-Furhtermore, the program in [main.c](src/main.cpp) implements the demo mentioned in the main README.
+Furhtermore, the program in [main.c](src/main.c) implements the demo mentioned in the main README.
 
 ## Setup and building
 
