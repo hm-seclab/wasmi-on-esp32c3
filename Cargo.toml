@@ -10,9 +10,9 @@ repository = "https://github.com/1c3t3a/wasm-on-esp32c3.git"
 license = "MIT"
 
 [dependencies]
-esp-idf-sys = { version = "0.27", features = ["binstart"] }
+esp-idf-sys = { version = "0.28.1", features = ["binstart"] }
 wasmi = { version = "0.9.1", default-features = false, features = ["core", "reduced-stack-buffer"] }
-esp-idf-hal = "0.27.0"
+esp-idf-hal = "0.29.3"
 embedded-hal = { version = "0.2", features = ["unproven"] }
 log = { version = "0.4", default-features = false }
 

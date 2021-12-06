@@ -17,6 +17,9 @@ use esp_idf_hal::gpio::Gpio6;
 use esp_idf_hal::gpio::Gpio7;
 use esp_idf_hal::gpio::Gpio8;
 use esp_idf_hal::gpio::Gpio9;
+use esp_idf_hal::gpio::GpioPin;
+use esp_idf_hal::gpio::Input;
+use esp_idf_hal::gpio::Output;
 use esp_idf_hal::gpio::Unknown;
 use esp_idf_hal::serial::config::Config;
 use esp_idf_hal::serial::Pins;
@@ -73,6 +76,7 @@ type ErrorCode = i32;
 /// Convenience trait for creating trait objects, statisfies both serial read and write.
 trait ReadAndWrite: serial::Read<u8, Error = EspError> + serial::Write<u8, Error = EspError> {}
 
+/// Tell the compiler that the trait is implemented for esp_idf_hals Serial connection type.
 impl<
         TX: esp_idf_hal::gpio::OutputPin,
         RX: esp_idf_hal::gpio::InputPin,
@@ -113,46 +117,106 @@ impl<'a> Runtime<'a> {
         &mut self,
         tx: RuntimePin,
         rx: RuntimePin,
-        _cts: Option<RuntimePin>,
-        _rts: Option<RuntimePin>,
+        cts: Option<RuntimePin>,
+        rts: Option<RuntimePin>,
         handle: u32,
     ) -> ErrorCode {
-        let periphals = Peripherals::take().unwrap();
-        let pins = periphals.pins;
+        // for the moment: allow only one uart connection
+        if self.uart_connections.len() > 0 {
+            return -1;
+        }
+        let peripherals = Peripherals::take().unwrap();
+        // Setup the pins
+        let tx_pin = match Self::get_output_pin_by_nr(tx.1) {
+            Ok(p) => p,
+            Err(err) => return err.code(),
+        };
 
-        match (rx.1, tx.1) {
-            (2, 3) => {
-                let config = Config::default().baudrate(Hertz(115_200));
-                // establish a serial connection  over the given pins
-                let serial = match Serial::<UART1, Gpio2<_>, Gpio3<_>>::new(
-                    periphals.uart1,
-                    Pins {
-                        tx: pins.gpio2,
-                        rx: pins.gpio3,
-                        cts: None,
-                        rts: None,
-                    },
-                    config,
-                ) {
-                    Ok(ser) => ser,
-                    Err(err) => return err.code(),
-                };
+        let rx_pin = match Self::get_input_pin_by_nr(rx.1) {
+            Ok(p) => p,
+            Err(err) => return err.code(),
+        };
 
-                // save the handle so that the WASM code can acess it
-                let res = self
-                    .memory
-                    .set_value(handle, self.handle_count)
-                    .map_or(1, |_| 0);
+        let cts_pin = cts
+            .map(|(_, pin)| Self::get_input_pin_by_nr(pin).ok())
+            .unwrap_or_default();
 
-                // save the connection as a trait object
-                self.uart_connections
-                    .insert(self.handle_count, Box::new(serial));
+        let rts_pin = rts
+            .map(|(_, pin)| Self::get_output_pin_by_nr(pin).ok())
+            .unwrap_or_default();
 
-                self.handle_count += 1;
+        let pins = Pins {
+            tx: tx_pin,
+            rx: rx_pin,
+            cts: cts_pin,
+            rts: rts_pin,
+        };
 
-                res
-            }
-            _ => 1,
+        // create a config
+        let config = Config::default().baudrate(Hertz(115_200));
+
+        // initialize a serial connection over the defined pins
+        let serial = match Serial::new(peripherals.uart1, pins, config) {
+            Ok(ser) => ser,
+            Err(err) => return err.code(),
+        };
+
+        // save the handle so that the WASM code can acess it
+        let res = self
+            .memory
+            .set_value(handle, self.handle_count)
+            .map_or(1, |_| 0);
+
+        // save the connection as a trait object
+        self.uart_connections
+            .insert(self.handle_count, Box::new(serial));
+
+        self.handle_count += 1;
+
+        res
+    }
+
+    /// Initialize a pin as input pin and return it as a generic `GpioPin`.
+    fn get_input_pin_by_nr(nr: u32) -> Result<GpioPin<Input>, EspError> {
+        match nr {
+            1 => Ok(unsafe { Gpio1::<Unknown>::new() }.into_input()?.degrade()),
+            2 => Ok(unsafe { Gpio2::<Unknown>::new() }.into_input()?.degrade()),
+            3 => Ok(unsafe { Gpio3::<Unknown>::new() }.into_input()?.degrade()),
+            4 => Ok(unsafe { Gpio4::<Unknown>::new() }.into_input()?.degrade()),
+            5 => Ok(unsafe { Gpio5::<Unknown>::new() }.into_input()?.degrade()),
+            6 => Ok(unsafe { Gpio6::<Unknown>::new() }.into_input()?.degrade()),
+            7 => Ok(unsafe { Gpio7::<Unknown>::new() }.into_input()?.degrade()),
+            8 => Ok(unsafe { Gpio8::<Unknown>::new() }.into_input()?.degrade()),
+            9 => Ok(unsafe { Gpio9::<Unknown>::new() }.into_input()?.degrade()),
+            10 => Ok(unsafe { Gpio10::<Unknown>::new() }.into_input()?.degrade()),
+            11 => Ok(unsafe { Gpio11::<Unknown>::new() }.into_input()?.degrade()),
+            18 => Ok(unsafe { Gpio18::<Unknown>::new() }.into_input()?.degrade()),
+            19 => Ok(unsafe { Gpio19::<Unknown>::new() }.into_input()?.degrade()),
+            20 => Ok(unsafe { Gpio20::<Unknown>::new() }.into_input()?.degrade()),
+            21 => Ok(unsafe { Gpio21::<Unknown>::new() }.into_input()?.degrade()),
+            _ => Err(EspError::from(2).unwrap()),
+        }
+    }
+
+    /// Initialize a pin as output pin and return it as a generic `GpioPin`.
+    fn get_output_pin_by_nr(nr: u32) -> Result<GpioPin<Output>, EspError> {
+        match nr {
+            1 => Ok(unsafe { Gpio1::<Unknown>::new() }.into_output()?.degrade()),
+            2 => Ok(unsafe { Gpio2::<Unknown>::new() }.into_output()?.degrade()),
+            3 => Ok(unsafe { Gpio3::<Unknown>::new() }.into_output()?.degrade()),
+            4 => Ok(unsafe { Gpio4::<Unknown>::new() }.into_output()?.degrade()),
+            5 => Ok(unsafe { Gpio5::<Unknown>::new() }.into_output()?.degrade()),
+            6 => Ok(unsafe { Gpio6::<Unknown>::new() }.into_output()?.degrade()),
+            7 => Ok(unsafe { Gpio7::<Unknown>::new() }.into_output()?.degrade()),
+            8 => Ok(unsafe { Gpio8::<Unknown>::new() }.into_output()?.degrade()),
+            9 => Ok(unsafe { Gpio9::<Unknown>::new() }.into_output()?.degrade()),
+            10 => Ok(unsafe { Gpio10::<Unknown>::new() }.into_output()?.degrade()),
+            11 => Ok(unsafe { Gpio11::<Unknown>::new() }.into_output()?.degrade()),
+            18 => Ok(unsafe { Gpio18::<Unknown>::new() }.into_output()?.degrade()),
+            19 => Ok(unsafe { Gpio19::<Unknown>::new() }.into_output()?.degrade()),
+            20 => Ok(unsafe { Gpio20::<Unknown>::new() }.into_output()?.degrade()),
+            21 => Ok(unsafe { Gpio21::<Unknown>::new() }.into_output()?.degrade()),
+            _ => Err(EspError::from(2).unwrap()),
         }
     }
 
@@ -161,7 +225,7 @@ impl<'a> Runtime<'a> {
     /// method on the trait object.
     fn uart_write(&mut self, handle: UartHandle, word: u8) -> ErrorCode {
         match self.uart_connections.get_mut(&handle) {
-            Some(connection) => connection.write(word).map_or(1, |_| 0),
+            Some(connection) => connection.write(word).map_or(-1, |_| 0),
             None => 1,
         }
     }
