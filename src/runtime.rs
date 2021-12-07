@@ -109,10 +109,9 @@ impl<'a> Runtime<'a> {
         }
     }
 
-    /// Inititalize a new uart connection, currently not able to take cts or rts pins.
-    /// Also currently a possible connection is only established if tx = 3 and rx = 2.
-    /// This will change as soon as this issue gets implemented and resolved:
-    /// https://github.com/esp-rs/esp-idf-hal/issues/15.
+    /// Inititalize a new uart connection over the given pins.
+    /// Currently it is only possible to open one UART connection
+    /// per runtime, but this will change soon.
     fn uart_init(
         &mut self,
         tx: RuntimePin,
@@ -121,7 +120,7 @@ impl<'a> Runtime<'a> {
         rts: Option<RuntimePin>,
         handle: u32,
     ) -> ErrorCode {
-        // for the moment: allow only one uart connection
+        // for the moment: allow only one uart connection per runtime
         if self.uart_connections.len() > 0 {
             return -1;
         }
@@ -231,7 +230,7 @@ impl<'a> Runtime<'a> {
     }
 
     /// Reads a single byte via UART. Operates on the already hand out uart
-    ///  handles and calls the `read` method on the trait object.
+    /// handles and calls the `read` method on the trait object.
     fn uart_read(&mut self, handle: UartHandle, offset: u32) -> ErrorCode {
         match self.uart_connections.get_mut(&handle) {
             Some(connection) => match connection.read() {
