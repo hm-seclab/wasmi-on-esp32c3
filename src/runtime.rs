@@ -137,11 +137,13 @@ impl<'a> Runtime<'a> {
         };
 
         let cts_pin = cts
-            .map(|(_, pin)| Self::get_input_pin_by_nr(pin).ok())
+            .map(|(_, pin_ptr)| self.memory.get_value(pin_ptr).unwrap_or(0))
+            .map(|pin| Self::get_input_pin_by_nr(pin).ok())
             .unwrap_or_default();
 
         let rts_pin = rts
-            .map(|(_, pin)| Self::get_output_pin_by_nr(pin).ok())
+            .map(|(_, pin_ptr)| self.memory.get_value(pin_ptr).unwrap_or(0))
+            .map(|pin| Self::get_output_pin_by_nr(pin).ok())
             .unwrap_or_default();
 
         let pins = Pins {
